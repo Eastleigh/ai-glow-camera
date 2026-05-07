@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Glow Camera — Admin Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --bg-card: #1a1a2e;
+      --bg-elevated: #16213e;
+      --primary: #8b5cf6;
+      --primary-light: #a78bfa;
+      --accent: #f472b6;
+      --text: #ffffff;
+      --text-secondary: #a0a0c0;
+      --text-muted: #6b7280;
+      --success: #10b981;
+      --error: #ef4444;
+      --warning: #f59e0b;
+      --surface: #1e1e3f;
+      --radius: 12px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 240px;
+      background: var(--bg-card);
+      border-right: 1px solid var(--surface);
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .sidebar-logo {
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 32px;
+      padding: 0 12px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      transition: all 0.2s;
+      border: none;
+      background: none;
+      width: 100%;
+      font-size: 14px;
+      text-align: left;
+    }
+
+    .sidebar-item:hover, .sidebar-item.active {
+      background: var(--surface);
+      color: var(--text);
+    }
+
+    .sidebar-item.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    .main {
+      margin-left: 240px;
+      padding: 32px;
+    }
+
+    .page-title {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .page-subtitle {
+      color: var(--text-muted);
+      margin-bottom: 32px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .stat-label {
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: 800;
+      margin-top: 4px;
+    }
+
+    .stat-change {
+      font-size: 13px;
+      margin-top: 4px;
+    }
+
+    .stat-change.positive { color: var(--success); }
+    .stat-change.negative { color: var(--error); }
+
+    .card {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      text-align: left;
+      padding: 12px;
+      border-bottom: 1px solid var(--surface);
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    td {
+      padding: 12px;
+      border-bottom: 1px solid var(--surface);
+      font-size: 14px;
+    }
+
+    tr:hover td {
+      background: var(--surface);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .badge-success { background: rgba(16,185,129,0.15); color: var(--success); }
+    .badge-error { background: rgba(239,68,68,0.15); color: var(--error); }
+    .badge-warning { background: rgba(245,158,11,0.15); color: var(--warning); }
+    .badge-info { background: rgba(139,92,246,0.15); color: var(--primary); }
+
+    .chart-container {
+      position: relative;
+      height: 300px;
+    }
+
+    .login-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .login-card {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      padding: 40px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .login-title {
+      font-size: 24px;
+      font-weight: 800;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .login-subtitle {
+      color: var(--text-muted);
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-label {
+      display: block;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--surface);
+      border: 1px solid var(--surface);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 15px;
+      outline: none;
+    }
+
+    .form-input:focus {
+      border-color: var(--primary);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      width: 100%;
+    }
+
+    .btn:hover { opacity: 0.9; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: white;
+    }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .templates-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .template-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+
+    .template-card h4 { margin-bottom: 8px; }
+    .template-card p {
+      color: var(--text-secondary);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding: 16px; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- Login -->
+    <div id="login-view" class="login-container">
+      <div class="login-card">
+        <div style="text-align:center;font-size:40px;margin-bottom:16px">✨</div>
+        <h1 class="login-title">Admin Dashboard</h1>
+        <p class="login-subtitle">AI Glow Camera</p>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" id="admin-email" class="form-input" placeholder="admin@aiglowcamera.app" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" id="admin-password" class="form-input" placeholder="Enter password" />
+        </div>
+        <button class="btn btn-primary" onclick="adminLogin()">Sign In</button>
+        <p id="login-error" style="color:var(--error);text-align:center;margin-top:12px;font-size:13px;display:none"></p>
+      </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard-view" style="display:none">
+      <nav class="sidebar">
+        <div class="sidebar-logo">✨ AI Glow Admin</div>
+        <button class="sidebar-item active" onclick="showSection('overview')">📊 Overview</button>
+        <button class="sidebar-item" onclick="showSection('users')">👥 Users</button>
+        <button class="sidebar-item" onclick="showSection('generations')">🎨 Generations</button>
+        <button class="sidebar-item" onclick="showSection('revenue')">💰 Revenue</button>
+        <button class="sidebar-item" onclick="showSection('api-costs')">⚡ API Costs</button>
+        <button class="sidebar-item" onclick="showSection('templates')">📝 Templates</button>
+        <button class="sidebar-item" onclick="showSection('styles')">🎭 Styles</button>
+        <button class="sidebar-item" onclick="adminLogout()" style="margin-top:auto;color:var(--error)">🚪 Logout</button>
+      </nav>
+
+      <div class="main">
+        <!-- Overview -->
+        <div id="section-overview" class="section active">
+          <h1 class="page-title">Dashboard Overview</h1>
+          <p class="page-subtitle">Real-time metrics for AI Glow Camera</p>
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-label">Total Users</div>
+              <div class="stat-value" id="stat-users">0</div>
+              <div class="stat-change positive">↑ Loading...</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Total Generations</div>
+              <div class="stat-value" id="stat-generations">0</div>
+              <div class="stat-change positive">↑ Loading...</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Revenue (MRR)</div>
+              <div class="stat-value" id="stat-revenue">$0</div>
+              <div class="stat-change positive">↑ Loading...</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">API Costs (30d)</div>
+              <div class="stat-value" id="stat-api-cost">$0</div>
+              <div class="stat-change negative">Tracking...</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Success Rate</div>
+              <div class="stat-value" id="stat-success-rate">0%</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Active Subscriptions</div>
+              <div class="stat-value" id="stat-subscriptions">0</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 class="card-title">Generations Over Time</h3>
+            <div class="chart-container">
+              <canvas id="chart-generations"></canvas>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 class="card-title">Popular Styles</h3>
+            <div class="chart-container">
+              <canvas id="chart-styles"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Users -->
+        <div id="section-users" class="section">
+          <h1 class="page-title">Users</h1>
+          <p class="page-subtitle">Manage user accounts</p>
+          <div class="card">
+            <table>
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Name</th>
+                  <th>Plan</th>
+                  <th>Credits</th>
+                  <th>Generations</th>
+                  <th>Joined</th>
+                </tr>
+              </thead>
+              <tbody id="users-table"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Generations -->
+        <div id="section-generations" class="section">
+          <h1 class="page-title">Generations</h1>
+          <p class="page-subtitle">All AI generation jobs</p>
+          <div class="card">
+            <table>
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Style</th>
+                  <th>Status</th>
+                  <th>Provider</th>
+                  <th>Time (ms)</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody id="generations-table"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Revenue -->
+        <div id="section-revenue" class="section">
+          <h1 class="page-title">Revenue</h1>
+          <p class="page-subtitle">Subscription revenue tracking</p>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-label">Monthly Revenue</div>
+              <div class="stat-value" id="revenue-monthly">$0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Premium Subs</div>
+              <div class="stat-value" id="revenue-premium">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Pro Subs</div>
+              <div class="stat-value" id="revenue-pro">0</div>
+            </div>
+          </div>
+          <div class="card">
+            <h3 class="card-title">Revenue Chart</h3>
+            <div class="chart-container">
+              <canvas id="chart-revenue"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- API Costs -->
+        <div id="section-api-costs" class="section">
+          <h1 class="page-title">API Cost Tracking</h1>
+          <p class="page-subtitle">Monitor AI generation costs</p>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-label">Avg Cost / Generation</div>
+              <div class="stat-value" id="cost-avg">$0.00</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Total Spent (30d)</div>
+              <div class="stat-value" id="cost-total">$0.00</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Failed Jobs (30d)</div>
+              <div class="stat-value" id="cost-failed">0</div>
+            </div>
+          </div>
+          <div class="card">
+            <h3 class="card-title">Cost by Provider</h3>
+            <div class="chart-container">
+              <canvas id="chart-costs"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Templates -->
+        <div id="section-templates" class="section">
+          <h1 class="page-title">Prompt Templates</h1>
+          <p class="page-subtitle">Manage AI generation prompts</p>
+          <div class="templates-grid" id="templates-grid"></div>
+        </div>
+
+        <!-- Styles -->
+        <div id="section-styles" class="section">
+          <h1 class="page-title">Style Management</h1>
+          <p class="page-subtitle">Configure transformation styles</p>
+          <div class="card">
+            <table>
+              <thead>
+                <tr>
+                  <th>Style</th>
+                  <th>Category</th>
+                  <th>Premium</th>
+                  <th>Generations</th>
+                  <th>Success Rate</th>
+                </tr>
+              </thead>
+              <tbody id="styles-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Configuration - Set your Supabase credentials
+    const SUPABASE_URL = localStorage.getItem('admin_supabase_url') || '';
+    const SUPABASE_KEY = localStorage.getItem('admin_supabase_key') || '';
+
+    let supabase = null;
+
+    // Styles data for templates section
+    const STYLES = [
+      { id: 'professional-headshot', name: 'Professional Headshot', category: 'portrait', premium: false, icon: '💼', prompt: 'Transform this selfie into a professional corporate headshot...' },
+      { id: 'dating-photo', name: 'Dating Photo', category: 'portrait', premium: false, icon: '💕', prompt: 'Transform this selfie into an attractive dating profile photo...' },
+      { id: 'luxury-lifestyle', name: 'Luxury Lifestyle', category: 'lifestyle', premium: false, icon: '✨', prompt: 'Transform this selfie into a luxury lifestyle portrait...' },
+      { id: 'fitness-glowup', name: 'Fitness Glow-Up', category: 'lifestyle', premium: true, icon: '💪', prompt: 'Transform this selfie into a fitness-inspired portrait...' },
+      { id: 'influencer-portrait', name: 'Influencer Portrait', category: 'portrait', premium: false, icon: '📸', prompt: 'Transform this selfie into an influencer-style portrait...' },
+      { id: 'cinematic-portrait', name: 'Cinematic Portrait', category: 'creative', premium: true, icon: '🎬', prompt: 'Transform this selfie into a cinematic portrait...' },
+      { id: 'ai-avatar', name: 'AI Avatar', category: 'creative', premium: true, icon: '🤖', prompt: 'Transform this selfie into a futuristic AI avatar...' },
+      { id: 'before-after-glowup', name: 'Before/After Glow-Up', category: 'portrait', premium: true, icon: '🔥', prompt: 'Transform this selfie into an enhanced glow-up version...' },
+    ];
+
+    function initSupabase() {
+      if (SUPABASE_URL && SUPABASE_KEY) {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        return true;
+      }
+      return false;
+    }
+
+    async function adminLogin() {
+      const email = document.getElementById('admin-email').value;
+      const password = document.getElementById('admin-password').value;
+      const errorEl = document.getElementById('login-error');
+
+      if (!email || !password) {
+        errorEl.textContent = 'Please fill in all fields';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      // For demo, accept any login and show dashboard
+      // In production, verify against Supabase auth and check admin role
+      document.getElementById('login-view').style.display = 'none';
+      document.getElementById('dashboard-view').style.display = 'block';
+      loadDashboardData();
+    }
+
+    function adminLogout() {
+      document.getElementById('login-view').style.display = 'flex';
+      document.getElementById('dashboard-view').style.display = 'none';
+    }
+
+    function showSection(name) {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
+      document.getElementById(`section-${name}`).classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    async function loadDashboardData() {
+      // Load with demo data for now
+      document.getElementById('stat-users').textContent = '0';
+      document.getElementById('stat-generations').textContent = '0';
+      document.getElementById('stat-revenue').textContent = '$0';
+      document.getElementById('stat-api-cost').textContent = '$0';
+      document.getElementById('stat-success-rate').textContent = '0%';
+      document.getElementById('stat-subscriptions').textContent = '0';
+
+      // Try to load from Supabase if configured
+      if (supabase) {
+        try {
+          const { count: userCount } = await supabase.from('users').select('*', { count: 'exact', head: true });
+          const { count: genCount } = await supabase.from('generations').select('*', { count: 'exact', head: true });
+          const { count: subCount } = await supabase.from('subscriptions').select('*', { count: 'exact', head: true }).eq('status', 'active');
+
+          const { data: completedGens } = await supabase.from('generations').select('status').eq('status', 'completed');
+          const { data: allGens } = await supabase.from('generations').select('status');
+
+          if (userCount) document.getElementById('stat-users').textContent = userCount;
+          if (genCount) document.getElementById('stat-generations').textContent = genCount;
+          if (subCount) document.getElementById('stat-subscriptions').textContent = subCount;
+
+          if (allGens && allGens.length > 0) {
+            const rate = ((completedGens?.length || 0) / allGens.length * 100).toFixed(1);
+            document.getElementById('stat-success-rate').textContent = rate + '%';
+          }
+
+          // Load users table
+          const { data: users } = await supabase.from('users').select('*').order('created_at', { ascending: false }).limit(50);
+          if (users) renderUsersTable(users);
+
+          // Load generations table
+          const { data: gens } = await supabase.from('generations').select('*').order('created_at', { ascending: false }).limit(50);
+          if (gens) renderGenerationsTable(gens);
+        } catch (err) {
+          console.log('Using demo data:', err.message);
+        }
+      }
+
+      renderTemplates();
+      renderStylesTable();
+      initCharts();
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function renderUsersTable(users) {
+      const tbody = document.getElementById('users-table');
+      tbody.innerHTML = users.map(u => `
+        <tr>
+          <td>${escapeHtml(u.email)}</td>
+          <td>${escapeHtml(u.display_name) || '—'}</td>
+          <td><span class="badge badge-${u.plan === 'pro' ? 'warning' : u.plan === 'premium' ? 'info' : 'success'}">${escapeHtml(u.plan)}</span></td>
+          <td>${Number(u.credits) || 0}</td>
+          <td>—</td>
+          <td>${new Date(u.created_at).toLocaleDateString()}</td>
+        </tr>
+      `).join('');
+    }
+
+    function renderGenerationsTable(gens) {
+      const tbody = document.getElementById('generations-table');
+      tbody.innerHTML = gens.map(g => `
+        <tr>
+          <td>${escapeHtml(g.user_id ? g.user_id.substring(0, 8) : '')}...</td>
+          <td>${escapeHtml(g.style_name)}</td>
+          <td><span class="badge badge-${g.status === 'completed' ? 'success' : g.status === 'failed' ? 'error' : 'warning'}">${escapeHtml(g.status)}</span></td>
+          <td>${escapeHtml(g.ai_provider) || '—'}</td>
+          <td>${Number(g.processing_time_ms) || '—'}</td>
+          <td>${new Date(g.created_at).toLocaleDateString()}</td>
+        </tr>
+      `).join('');
+    }
+
+    function renderTemplates() {
+      const grid = document.getElementById('templates-grid');
+      grid.innerHTML = STYLES.map(s => `
+        <div class="template-card">
+          <h4>${s.icon} ${s.name}</h4>
+          <p><strong>Category:</strong> ${s.category}</p>
+          <p><strong>Premium:</strong> ${s.premium ? 'Yes' : 'No'}</p>
+          <p style="margin-top:8px">${s.prompt}</p>
+        </div>
+      `).join('');
+    }
+
+    function renderStylesTable() {
+      const tbody = document.getElementById('styles-table');
+      tbody.innerHTML = STYLES.map(s => `
+        <tr>
+          <td>${s.icon} ${s.name}</td>
+          <td><span class="badge badge-info">${s.category}</span></td>
+          <td>${s.premium ? '<span class="badge badge-warning">Premium</span>' : '<span class="badge badge-success">Free</span>'}</td>
+          <td>0</td>
+          <td>—</td>
+        </tr>
+      `).join('');
+    }
+
+    function initCharts() {
+      // Generations over time chart
+      const genCtx = document.getElementById('chart-generations');
+      if (genCtx) {
+        new Chart(genCtx, {
+          type: 'line',
+          data: {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            datasets: [{
+              label: 'Generations',
+              data: [0, 0, 0, 0, 0, 0, 0],
+              borderColor: '#8b5cf6',
+              backgroundColor: 'rgba(139,92,246,0.1)',
+              fill: true,
+              tension: 0.4,
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: '#a0a0c0' } } },
+            scales: {
+              x: { grid: { color: '#1e1e3f' }, ticks: { color: '#6b7280' } },
+              y: { grid: { color: '#1e1e3f' }, ticks: { color: '#6b7280' } },
+            },
+          },
+        });
+      }
+
+      // Popular styles chart
+      const stylesCtx = document.getElementById('chart-styles');
+      if (stylesCtx) {
+        new Chart(stylesCtx, {
+          type: 'doughnut',
+          data: {
+            labels: STYLES.map(s => s.name),
+            datasets: [{
+              data: STYLES.map(() => 0),
+              backgroundColor: ['#8b5cf6', '#f472b6', '#f59e0b', '#10b981', '#3b82f6', '#6366f1', '#06b6d4', '#ef4444'],
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'right', labels: { color: '#a0a0c0', padding: 12 } } },
+          },
+        });
+      }
+
+      // Revenue chart
+      const revCtx = document.getElementById('chart-revenue');
+      if (revCtx) {
+        new Chart(revCtx, {
+          type: 'bar',
+          data: {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+            datasets: [
+              { label: 'Premium', data: [0, 0, 0, 0, 0, 0], backgroundColor: '#8b5cf6' },
+              { label: 'Pro', data: [0, 0, 0, 0, 0, 0], backgroundColor: '#f59e0b' },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: '#a0a0c0' } } },
+            scales: {
+              x: { grid: { color: '#1e1e3f' }, ticks: { color: '#6b7280' } },
+              y: { grid: { color: '#1e1e3f' }, ticks: { color: '#6b7280' } },
+            },
+          },
+        });
+      }
+
+      // Cost chart
+      const costCtx = document.getElementById('chart-costs');
+      if (costCtx) {
+        new Chart(costCtx, {
+          type: 'bar',
+          data: {
+            labels: ['Replicate', 'Fal.ai', 'OpenAI'],
+            datasets: [{
+              label: 'Cost ($)',
+              data: [0, 0, 0],
+              backgroundColor: ['#8b5cf6', '#f472b6', '#10b981'],
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: '#a0a0c0' } } },
+            scales: {
+              x: { grid: { color: '#1e1e3f' }, ticks: { color: '#6b7280' } },
+              y: { grid: { color: '#1e1e3f' }, ticks: { color: '#6b7280' } },
+            },
+          },
+        });
+      }
+    }
+
+    // Init
+    initSupabase();
+  </script>
+</body>
+</html>
