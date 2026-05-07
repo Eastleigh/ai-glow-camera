@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/lib/auth';
+import { useSuperwall } from '../../src/lib/superwall';
 import { COLORS, SPACING, RADIUS, FONT, GRADIENTS } from '../../src/constants/theme';
 import { PLANS } from '../../src/lib/types';
 
@@ -20,6 +21,7 @@ export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { registerPlacement } = useSuperwall();
 
   const plan = user?.plan ?? 'free';
   const planDetails = PLANS[plan];
@@ -91,7 +93,10 @@ export default function ProfileScreen() {
         </View>
 
         {plan === 'free' && (
-          <TouchableOpacity onPress={() => router.push('/pricing')} activeOpacity={0.8}>
+          <TouchableOpacity
+            onPress={() => registerPlacement('premium_upgrade', { source: 'profile' })}
+            activeOpacity={0.8}
+          >
             <LinearGradient
               colors={[GRADIENTS.premium[0], GRADIENTS.premium[1]]}
               start={{ x: 0, y: 0 }}

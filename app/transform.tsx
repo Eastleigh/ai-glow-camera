@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TransformCard } from '../src/components/TransformCard';
 import { LoadingOverlay } from '../src/components/LoadingOverlay';
 import { useAuth } from '../src/lib/auth';
+import { useSuperwall } from '../src/lib/superwall';
 import { uploadPhoto, generateTransformation, pollGeneration } from '../src/lib/api';
 import { TRANSFORM_STYLES } from '../src/constants/transforms';
 import { COLORS, SPACING, RADIUS, FONT } from '../src/constants/theme';
@@ -34,18 +35,14 @@ export default function TransformScreen() {
 
   const credits = user?.credits ?? 3;
   const plan = user?.plan ?? 'free';
+  const { registerPlacement } = useSuperwall();
 
-  const handleSelectStyle = (styleId: string) => {
+  const handleSelectStyle = async (styleId: string) => {
     const style = TRANSFORM_STYLES.find((s) => s.id === styleId);
     if (style?.premium && plan === 'free') {
-      Alert.alert(
-        'Premium Style',
-        'This style requires a Premium or Pro subscription.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'View Plans', onPress: () => router.push('/pricing') },
-        ]
-      );
+      await registerPlacement('premium_style', { style: styleId }, () => {
+        setSelectedStyle(styleId);
+      });
       return;
     }
     setSelectedStyle(styleId);
@@ -55,10 +52,9 @@ export default function TransformScreen() {
     if (!selectedStyle || !photoUri) return;
 
     if (credits <= 0) {
-      Alert.alert('No Credits', 'You need credits to generate. Upgrade your plan!', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'View Plans', onPress: () => router.push('/pricing') },
-      ]);
+      await registerPlacement('no_credits', undefined, () => {
+        router.push('/pricing');
+      });
       return;
     }
 

@@ -55,6 +55,17 @@
           "savePhotosPermission": "AI Glow Camera needs permission to save images to your camera roll.",
           "isAccessMediaLocationEnabled": true
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 21
+          },
+          "ios": {
+            "deploymentTarget": "15.1"
+          }
+        }
       ]
     ]
   }

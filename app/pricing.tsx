@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../src/lib/auth';
+import { useSuperwall } from '../src/lib/superwall';
 import { PLANS, type PlanType } from '../src/lib/types';
 import { COLORS, SPACING, RADIUS, FONT, GRADIENTS } from '../src/constants/theme';
 
@@ -20,26 +21,33 @@ export default function PricingScreen() {
   const { user } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { registerPlacement, isNativeAvailable } = useSuperwall();
 
   const currentPlan = user?.plan ?? 'free';
 
-  const handleSubscribe = (plan: PlanType) => {
+  const handleSubscribe = async (plan: PlanType) => {
     if (plan === currentPlan) return;
     if (plan === 'free') return;
 
-    Alert.alert(
-      `Subscribe to ${PLANS[plan].name}`,
-      `You'll be charged ${PLANS[plan].price}. This will be processed through Stripe/RevenueCat.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Subscribe',
-          onPress: () => {
-            Alert.alert('Coming Soon', 'Payment integration will be available in the next update.');
+    if (isNativeAvailable) {
+      await registerPlacement('premium_upgrade', { plan }, () => {
+        router.back();
+      });
+    } else {
+      Alert.alert(
+        `Subscribe to ${PLANS[plan].name}`,
+        `You'll be charged ${PLANS[plan].price}. This will be processed through Superwall.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Subscribe',
+            onPress: async () => {
+              await registerPlacement('premium_upgrade', { plan });
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   return (

@@ -55,6 +55,7 @@ A mobile-first AI camera app that transforms selfies with AI-powered style trans
 | Auth / DB / Storage | Supabase |
 | AI Generation | Replicate / Fal.ai / OpenAI (fallback chain) |
 | Backend | Supabase Edge Functions (Deno) |
+| Paywall | Superwall (expo-superwall) |
 | Payments | Stripe / RevenueCat (ready) |
 | Admin | Static HTML + Chart.js |
 
@@ -143,6 +144,8 @@ User takes photo
 | `EXPO_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key |
 | `EXPO_PUBLIC_API_URL` | Backend API base URL |
+| `EXPO_PUBLIC_SUPERWALL_IOS_KEY` | Superwall iOS public API key |
+| `EXPO_PUBLIC_SUPERWALL_ANDROID_KEY` | Superwall Android public API key |
 | `REPLICATE_API_TOKEN` | Replicate API token (Edge Function) |
 | `FAL_KEY` | Fal.ai API key (Edge Function) |
 | `OPENAI_API_KEY` | OpenAI API key (Edge Function) |
