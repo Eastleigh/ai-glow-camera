@@ -609,14 +609,24 @@
       initCharts();
     }
 
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
     function renderUsersTable(users) {
       const tbody = document.getElementById('users-table');
       tbody.innerHTML = users.map(u => `
         <tr>
-          <td>${u.email}</td>
-          <td>${u.display_name || '—'}</td>
-          <td><span class="badge badge-${u.plan === 'pro' ? 'warning' : u.plan === 'premium' ? 'info' : 'success'}">${u.plan}</span></td>
-          <td>${u.credits}</td>
+          <td>${escapeHtml(u.email)}</td>
+          <td>${escapeHtml(u.display_name) || '—'}</td>
+          <td><span class="badge badge-${u.plan === 'pro' ? 'warning' : u.plan === 'premium' ? 'info' : 'success'}">${escapeHtml(u.plan)}</span></td>
+          <td>${Number(u.credits) || 0}</td>
           <td>—</td>
           <td>${new Date(u.created_at).toLocaleDateString()}</td>
         </tr>
@@ -627,11 +637,11 @@
       const tbody = document.getElementById('generations-table');
       tbody.innerHTML = gens.map(g => `
         <tr>
-          <td>${g.user_id.substring(0, 8)}...</td>
-          <td>${g.style_name}</td>
-          <td><span class="badge badge-${g.status === 'completed' ? 'success' : g.status === 'failed' ? 'error' : 'warning'}">${g.status}</span></td>
-          <td>${g.ai_provider || '—'}</td>
-          <td>${g.processing_time_ms || '—'}</td>
+          <td>${escapeHtml(g.user_id ? g.user_id.substring(0, 8) : '')}...</td>
+          <td>${escapeHtml(g.style_name)}</td>
+          <td><span class="badge badge-${g.status === 'completed' ? 'success' : g.status === 'failed' ? 'error' : 'warning'}">${escapeHtml(g.status)}</span></td>
+          <td>${escapeHtml(g.ai_provider) || '—'}</td>
+          <td>${Number(g.processing_time_ms) || '—'}</td>
           <td>${new Date(g.created_at).toLocaleDateString()}</td>
         </tr>
       `).join('');

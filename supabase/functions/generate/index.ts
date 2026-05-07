@@ -57,14 +57,25 @@ Deno.serve(async (req) => {
 
     const body: GenerateRequest = await req.json();
 
-    // Check credits
+    // Check user plan
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('credits, plan')
+      .select('plan')
       .eq('id', user.id)
       .single();
 
-    if (userError || !userData || userData.credits < 1) {
+    if (userError || !userData) {
+      return new Response(JSON.stringify({ message: 'User not found' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Atomically deduct credit (prevents race condition / double-spending)
+    const { data: deductResult, error: deductError } = await supabase
+      .rpc('deduct_credit', { user_uuid: user.id });
+
+    if (deductError || deductResult === null) {
       return new Response(JSON.stringify({ message: 'Insufficient credits' }), {
         status: 402,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -93,8 +104,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Deduct credit
-    await supabase.from('users').update({ credits: userData.credits - 1 }).eq('id', user.id);
+    // Credit already deducted atomically above
 
     // Log credit transaction
     await supabase.from('credit_transactions').insert({
@@ -164,8 +174,8 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     } else {
-      // Refund credit on failure
-      await supabase.from('users').update({ credits: userData.credits }).eq('id', user.id);
+      // Atomically refund credit on failure
+      await supabase.rpc('refund_credit', { user_uuid: user.id });
 
       await supabase
         .from('generations')

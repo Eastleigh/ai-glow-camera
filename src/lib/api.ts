@@ -19,11 +19,15 @@ export async function uploadPhoto(uri: string, userId: string): Promise<string> 
 
   if (error) throw new Error(`Upload failed: ${error.message}`);
 
-  const { data: urlData } = supabase.storage
+  const { data: urlData, error: signError } = await supabase.storage
     .from('originals')
-    .getPublicUrl(data.path);
+    .createSignedUrl(data.path, 3600);
 
-  return urlData.publicUrl;
+  if (signError || !urlData?.signedUrl) {
+    throw new Error(`Failed to create signed URL: ${signError?.message || 'Unknown error'}`);
+  }
+
+  return urlData.signedUrl;
 }
 
 export async function generateTransformation(

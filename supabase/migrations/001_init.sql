@@ -140,6 +140,22 @@ CREATE POLICY "Anyone can view generated images"
   ON storage.objects FOR SELECT
   USING (bucket_id = 'generations');
 
+-- Atomic credit deduction to prevent race conditions
+CREATE OR REPLACE FUNCTION deduct_credit(user_uuid UUID)
+RETURNS INTEGER AS $$
+  UPDATE public.users SET credits = credits - 1
+  WHERE id = user_uuid AND credits >= 1
+  RETURNING credits;
+$$ LANGUAGE sql;
+
+-- Atomic credit refund
+CREATE OR REPLACE FUNCTION refund_credit(user_uuid UUID)
+RETURNS INTEGER AS $$
+  UPDATE public.users SET credits = credits + 1
+  WHERE id = user_uuid
+  RETURNING credits;
+$$ LANGUAGE sql;
+
 -- Auto-update updated_at
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$

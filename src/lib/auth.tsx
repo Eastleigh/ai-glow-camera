@@ -20,7 +20,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUserProfile = async (userId: string) => {
+  const fetchUserProfile = async (userId: string, email?: string) => {
     const { data, error } = await supabase
       .from('users')
       .select('*')
@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from('users')
         .insert({
           id: userId,
-          email: session?.user?.email || '',
+          email: email || '',
           credits: 3,
           plan: 'free',
           referral_code: userId.substring(0, 8).toUpperCase(),
@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = async () => {
     if (session?.user?.id) {
-      await fetchUserProfile(session.user.id);
+      await fetchUserProfile(session.user.id, session.user.email);
     }
   };
 
@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s);
       if (s?.user?.id) {
-        fetchUserProfile(s.user.id);
+        fetchUserProfile(s.user.id, s.user.email);
       }
       setLoading(false);
     });
@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
       if (s?.user?.id) {
-        fetchUserProfile(s.user.id);
+        fetchUserProfile(s.user.id, s.user.email);
       } else {
         setUser(null);
       }
