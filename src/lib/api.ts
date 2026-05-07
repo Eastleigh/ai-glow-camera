@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 import { readAsStringAsync, EncodingType } from 'expo-file-system/legacy';
 import type { Generation } from './types';
 
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://your-api.supabase.co/functions/v1';
+const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://saxlpbkyaedxvtkbozed.supabase.co/functions/v1';
 
 export async function uploadPhoto(uri: string, userId: string): Promise<string> {
   const fileName = `${userId}/${Date.now()}.jpg`;
